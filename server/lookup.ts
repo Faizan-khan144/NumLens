@@ -28,14 +28,27 @@ export type ValidLookup = {
     flag: string
     callingCode: string
   }
+  formats: {
+    e164: string
+    international: string
+    national: string
+  }
   lineType: {
     code: string
     label: string
   }
-  carrier: CarrierGuess | null
+  carrier: (CarrierGuess & { confidencePct: number }) | null
   carrierNote: string | null
   portability: string | null
+  portable: boolean
   live: boolean
+  source: 'numverify' | 'libphonenumber'
+  policy: {
+    storesNumbers: false
+    ownerLookup: false
+    signupRequired: false
+  }
+  checkedAt: string
   durationMs: number
 }
 
@@ -149,12 +162,21 @@ export async function lookupNumber(raw: string, defaultCountry?: string): Promis
         : `Carrier data is not covered for ${countryName(iso)} yet. Validation, line type and formatting are still exact. Connect an HLR provider (for example Twilio Lookup or numverify) for live carrier data here.`
   }
 
+  const portable = typeCode === 'MOBILE'
+  const international = phone.formatInternational()
+  const nationalFormat = phone.formatNational()
+
   return {
     valid: true,
     input,
     e164: phone.number,
-    international: phone.formatInternational(),
-    national: phone.formatNational(),
+    international,
+    national: nationalFormat,
+    formats: {
+      e164: phone.number,
+      international,
+      national: nationalFormat,
+    },
     country: {
       iso,
       name: countryName(iso),
@@ -165,13 +187,20 @@ export async function lookupNumber(raw: string, defaultCountry?: string): Promis
       code: typeCode,
       label: TYPE_LABELS[typeCode] ?? 'Unknown',
     },
-    carrier,
+    carrier: carrier ? { ...carrier, confidencePct: Math.round(carrier.confidence * 100) } : null,
     carrierNote,
-    portability:
-      typeCode === 'MOBILE'
-        ? 'Mobile number portability lets a number move between networks. Treat the carrier as an estimate, not a guarantee.'
-        : null,
+    portability: portable
+      ? 'Mobile number portability lets a number move between networks. Treat the carrier as an estimate, not a guarantee.'
+      : null,
+    portable,
     live: Boolean(live),
+    source: live ? 'numverify' : 'libphonenumber',
+    policy: {
+      storesNumbers: false,
+      ownerLookup: false,
+      signupRequired: false,
+    },
+    checkedAt: new Date().toISOString(),
     durationMs: duration(),
   }
 }

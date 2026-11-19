@@ -72,12 +72,23 @@ curl "http://localhost:8787/api/lookup?number=%2B923001234567"
 {
   "valid": true,
   "e164": "+923001234567",
-  "international": "+92 300 1234567",
-  "national": "0300 1234567",
-  "country": { "iso": "PK", "name": "Pakistan", "callingCode": "92" },
+  "formats": {
+    "international": "+92 300 1234567",
+    "national": "0300 1234567"
+  },
+  "country": { "iso": "PK", "name": "Pakistan", "flag": "PK", "callingCode": "92" },
   "lineType": { "code": "MOBILE", "label": "Mobile" },
-  "carrier": { "name": "Jazz", "confidence": 0.92, "source": "prefix-dataset" },
-  "live": false
+  "carrier": {
+    "name": "Jazz",
+    "confidence": 0.92,
+    "confidencePct": 92,
+    "source": "prefix-dataset"
+  },
+  "portable": true,
+  "source": "libphonenumber",
+  "policy": { "storesNumbers": false, "ownerLookup": false, "signupRequired": false },
+  "checkedAt": "2026-11-19T12:00:00.000Z",
+  "durationMs": 18
 }
 ```
 

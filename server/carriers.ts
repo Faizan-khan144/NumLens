@@ -5,7 +5,7 @@ export type CarrierGuess = {
   kind: 'mobile' | 'landline'
 }
 
-type Range = { from: number; to: number; carrier: string }
+type Range = { from: number; to: number; carrier: string; confidence?: number }
 
 const PK_MOBILE: Range[] = [
   { from: 300, to: 309, carrier: 'Jazz' },
@@ -13,7 +13,9 @@ const PK_MOBILE: Range[] = [
   { from: 320, to: 329, carrier: 'Jazz' },
   { from: 330, to: 339, carrier: 'Ufone' },
   { from: 340, to: 349, carrier: 'Telenor' },
-  { from: 355, to: 355, carrier: 'SCOM' },
+  { from: 350, to: 359, carrier: 'SCOM', confidence: 0.62 },
+  { from: 370, to: 379, carrier: 'Jazz', confidence: 0.62 },
+  { from: 388, to: 388, carrier: 'Ufone', confidence: 0.55 },
 ]
 
 const PK_LANDLINE: Record<string, string> = {
@@ -79,7 +81,7 @@ export function detectCarrier(iso: string | undefined, nationalNumber: string | 
   if (nationalNumber.startsWith('3') && nationalNumber.length === 10) {
     const prefix = Number(nationalNumber.slice(0, 3))
     const match = PK_MOBILE.find((range) => prefix >= range.from && prefix <= range.to)
-    if (match) return { name: match.carrier, confidence: 0.92, source: 'prefix-dataset', kind: 'mobile' }
+    if (match) return { name: match.carrier, confidence: match.confidence ?? 0.92, source: 'prefix-dataset', kind: 'mobile' }
     return null
   }
 

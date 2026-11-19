@@ -1,6 +1,7 @@
 export type Carrier = {
   name: string
   confidence: number
+  confidencePct: number
   source: 'prefix-dataset' | 'numverify'
   kind: 'mobile' | 'landline'
 }
@@ -12,12 +13,17 @@ export type LookupResult =
       e164: string
       international: string
       national: string
+      formats: { e164: string; international: string; national: string }
       country: { iso: string; name: string; flag: string; callingCode: string }
       lineType: { code: string; label: string }
       carrier: Carrier | null
       carrierNote: string | null
       portability: string | null
+      portable: boolean
       live: boolean
+      source: 'numverify' | 'libphonenumber'
+      policy: { storesNumbers: false; ownerLookup: false; signupRequired: false }
+      checkedAt: string
       durationMs: number
     }
   | {
