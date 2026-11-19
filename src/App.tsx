@@ -15,9 +15,10 @@ import {
   Signal,
   Sparkles,
 } from 'lucide-react'
+import { createPortal } from 'react-dom'
 import { lookup, type LookupResult } from './lib/api'
 
-import { COUNTRIES, flagOf } from './lib/countries'
+import { COUNTRIES } from './lib/countries'
 
 const SAMPLES = [
   { label: 'Jazz', number: '+923001234567' },
@@ -313,7 +314,7 @@ function Stat({ to, prefix = '', suffix = '' }: { to: number; prefix?: string; s
     let frame = 0
     const start = performance.now()
     const tick = (now: number) => {
-      const progress = Math.min((now - start) / 1400, 1)
+      const progress = Math.min(Math.max((now - start) / 1400, 0), 1)
       const eased = 1 - Math.pow(1 - progress, 3)
       setValue(Math.round(to * eased))
       if (progress < 1) frame = requestAnimationFrame(tick)
@@ -437,25 +438,46 @@ function CountrySelect({ name, value, onChange }: { name?: string; value?: strin
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [internal, setInternal] = useState(value || 'PK')
-  const boxRef = useRef<HTMLDivElement | null>(null)
+  const [pos, setPos] = useState({ top: 0, left: 0, width: 288, up: false })
+  const triggerRef = useRef<HTMLButtonElement | null>(null)
+  const panelRef = useRef<HTMLDivElement | null>(null)
 
   const selectedCode = value ?? internal
   const selected =
     COUNTRIES.find((item) => item.code === selectedCode) ?? COUNTRIES.find((item) => item.code === 'PK')!
 
+  const place = () => {
+    const rect = triggerRef.current?.getBoundingClientRect()
+    if (!rect) return
+    const width = Math.min(300, window.innerWidth - 16)
+    const left = Math.max(8, Math.min(rect.right - width, window.innerWidth - width - 8))
+    const spaceBelow = window.innerHeight - rect.bottom
+    const up = spaceBelow < 350 && rect.top > spaceBelow
+    setPos({ top: up ? rect.top - 8 : rect.bottom + 8, left, width, up })
+  }
+
   useEffect(() => {
     if (!open) return
+    place()
+
     const onDown = (event: globalThis.MouseEvent) => {
-      if (boxRef.current && !boxRef.current.contains(event.target as Node)) setOpen(false)
+      const target = event.target as Node
+      if (!triggerRef.current?.contains(target) && !panelRef.current?.contains(target)) setOpen(false)
     }
     const onKey = (event: globalThis.KeyboardEvent) => {
       if (event.key === 'Escape') setOpen(false)
     }
+    const onMove = () => place()
+
     document.addEventListener('mousedown', onDown)
     document.addEventListener('keydown', onKey)
+    window.addEventListener('resize', onMove)
+    window.addEventListener('scroll', onMove, true)
     return () => {
       document.removeEventListener('mousedown', onDown)
       document.removeEventListener('keydown', onKey)
+      window.removeEventListener('resize', onMove)
+      window.removeEventListener('scroll', onMove, true)
     }
   }, [open])
 
@@ -475,9 +497,10 @@ function CountrySelect({ name, value, onChange }: { name?: string; value?: strin
   }
 
   return (
-    <div ref={boxRef} className="relative">
+    <div className="relative">
       {name ? <input type="hidden" name={name} value={selectedCode} /> : null}
       <button
+        ref={triggerRef}
         type="button"
         onClick={() => setOpen((current) => !current)}
         aria-haspopup="listbox"
@@ -486,56 +509,72 @@ function CountrySelect({ name, value, onChange }: { name?: string; value?: strin
           open ? 'bg-white ring-1 ring-[#f4442e]/25' : 'bg-[#f4f6f9] hover:bg-[#eef0f4]'
         }`}
       >
-        <span className="text-[15px] leading-none">{flagOf(selected.code)}</span>
-        <span className="mono text-[11.5px] font-medium">+{selected.dial}</span>
-        <span className="mono hidden text-[9px] uppercase tracking-[0.1em] text-faint sm:block">{selected.code}</span>
+        <span className="mono grid h-6 w-7 shrink-0 place-items-center rounded-md bg-[#fff1ec] text-[9px] font-semibold tracking-wide text-lime">
+          {selected.code}
+        </span>
+        <span className="mono text-[12px] font-medium">+{selected.dial}</span>
         <ChevronDown
           className={`ml-auto h-3.5 w-3.5 shrink-0 text-faint transition-transform duration-300 ${open ? 'rotate-180' : ''}`}
         />
       </button>
 
-      {open && (
-        <div className="menu-in absolute right-0 top-[calc(100%+8px)] z-50 w-[288px] overflow-hidden rounded-2xl border border-black/10 bg-white/95 p-2 shadow-[0_24px_60px_rgba(20,24,36,0.18)] backdrop-blur-xl">
-          <div className="flex items-center gap-2 rounded-xl bg-[#f4f6f9] px-2.5 py-2">
-            <Search className="h-3.5 w-3.5 shrink-0 text-faint" />
-            <input
-              autoFocus
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder={`Search ${COUNTRIES.length} countries`}
-              className="w-full min-w-0 bg-transparent text-[12px] text-ink outline-none placeholder:text-faint"
-            />
-          </div>
+      {open
+        ? createPortal(
+            <div
+              ref={panelRef}
+              role="listbox"
+              style={{
+                top: pos.top,
+                left: pos.left,
+                width: pos.width,
+                transform: pos.up ? 'translateY(-100%)' : undefined,
+              }}
+              className="menu-in fixed z-[100] overflow-hidden rounded-2xl border border-black/10 bg-[#ffffff] p-2 shadow-[0_24px_60px_rgba(20,24,36,0.22)]"
+            >
+              <div className="flex items-center gap-2 rounded-xl bg-[#f4f6f9] px-2.5 py-2">
+                <Search className="h-3.5 w-3.5 shrink-0 text-faint" />
+                <input
+                  autoFocus
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder={`Search ${COUNTRIES.length} countries`}
+                  className="w-full min-w-0 bg-transparent text-[12px] text-ink outline-none placeholder:text-faint"
+                />
+              </div>
 
-          <div className="mt-1.5 max-h-[252px] overflow-y-auto pr-0.5">
-            {filtered.length === 0 ? (
-              <p className="px-2 py-6 text-center text-[11px] text-faint">No country found</p>
-            ) : (
-              filtered.map((item, index) => (
-                <button
-                  key={item.code}
-                  type="button"
-                  onClick={() => pick(item.code)}
-                  className={`menu-item-in flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left transition-colors hover:bg-[#f6f7f9] ${
-                    item.code === selectedCode ? 'bg-[#fff3f0]' : ''
-                  }`}
-                  style={{ animationDelay: `${Math.min(index, 12) * 10}ms` }}
-                >
-                  <span className="mono grid h-6 w-7 shrink-0 place-items-center rounded-md bg-[#f4f6f9] text-[9px] font-semibold tracking-wide text-muted">{item.code}</span>
-                  <span className="min-w-0 flex-1 truncate text-[12px]">{item.name}</span>
-                  <span className="mono shrink-0 text-[10.5px] text-faint">+{item.dial}</span>
-                  {item.code === selectedCode ? <Check className="h-3 w-3 shrink-0 text-lime" /> : null}
-                </button>
-              ))
-            )}
-          </div>
+              <div className="mt-1.5 max-h-[252px] overflow-y-auto pr-0.5">
+                {filtered.length === 0 ? (
+                  <p className="px-2 py-6 text-center text-[11px] text-faint">No country found</p>
+                ) : (
+                  filtered.map((item, index) => (
+                    <button
+                      key={item.code}
+                      type="button"
+                      onClick={() => pick(item.code)}
+                      className={`menu-item-in flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left transition-colors hover:bg-[#f6f7f9] ${
+                        item.code === selectedCode ? 'bg-[#fff3f0]' : ''
+                      }`}
+                      style={{ animationDelay: `${Math.min(index, 12) * 10}ms` }}
+                    >
+                      <span className="mono grid h-6 w-7 shrink-0 place-items-center rounded-md bg-[#f4f6f9] text-[9px] font-semibold tracking-wide text-muted">
+                        {item.code}
+                      </span>
+                      <span className="min-w-0 flex-1 truncate text-[12px]">{item.name}</span>
+                      <span className="mono shrink-0 text-[10.5px] text-faint">+{item.dial}</span>
+                      {item.code === selectedCode ? <Check className="h-3 w-3 shrink-0 text-lime" /> : null}
+                    </button>
+                  ))
+                )}
+              </div>
 
-          <div className="mt-1.5 flex items-center justify-between border-t border-black/[0.07] px-2 pb-0.5 pt-1.5">
-            <span className="label">{filtered.length} countries</span>
-            <span className="label">esc to close</span>
-          </div>
-        </div>
-      )}
+              <div className="mt-1.5 flex items-center justify-between border-t border-black/[0.07] px-2 pb-0.5 pt-1.5">
+                <span className="label">{filtered.length} countries</span>
+                <span className="label">esc to close</span>
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
     </div>
   )
 }
