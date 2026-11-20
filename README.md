@@ -66,8 +66,7 @@ npm install
 npm run dev
 ```
 
-- Web: http://localhost:5173
-- API: http://localhost:8787
+
 
 Production:
 
