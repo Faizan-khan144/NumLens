@@ -1,5 +1,5 @@
 import { parsePhoneNumberFromString, type CountryCode } from 'libphonenumber-js/max'
-import { detectCarrier, type CarrierGuess } from './carriers'
+import { detectCarrier, type CarrierGuess } from './carriers.js'
 
 const TYPE_LABELS: Record<string, string> = {
   MOBILE: 'Mobile',

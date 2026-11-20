@@ -2,8 +2,8 @@ import { Hono, type Context } from 'hono'
 import { cors } from 'hono/cors'
 import { serve } from '@hono/node-server'
 import { serveStatic } from '@hono/node-server/serve-static'
-import { COVERAGE } from './carriers'
-import { lookupNumber } from './lookup'
+import { COVERAGE } from './carriers.js'
+import { lookupNumber } from './lookup.js'
 
 const app = new Hono()
 
